@@ -2,11 +2,15 @@
   <div class="container">
     <div v-show="flag" class="welcome">
       <img class="title-img" src="@/assets/images/text.png" />
+      <div class="high-score-welcome">历史最高分：{{ highScore }}分</div>
       <el-button class="change-btn" type="primary" @click="handleStart"
         >开始游戏</el-button
       >
     </div>
-    <div class="score">{{ score }}分</div>
+    <div class="score-container">
+      <div class="score">当前分数：{{ score }}分</div>
+      <div class="high-score">最高分：{{ highScore }}分</div>
+    </div>
     <div class="stage">
       <div
         v-for="item in data"
@@ -24,28 +28,67 @@
         @click="handleClick(item)"
       ></div>
     </div>
-    <el-button class="change-btn" type="primary" @click="handleOver"
-      >结束游戏</el-button
+    <div class="game-buttons" v-show="!flag">
+      <el-button class="restart-btn" type="warning" @click="handleRestart"
+        >重新开始</el-button
+      >
+      <el-button class="end-btn" type="primary" @click="handleOver"
+        >结束游戏</el-button
+      >
+    </div>
+    <el-button class="change-btn" type="primary" v-show="flag" @click="handleStart"
+      >开始游戏</el-button
     >
   </div>
 </template>
 <script lang="ts" setup>
-import { reactive, ref, toRefs } from "vue"
+import { ref, onMounted, computed } from "vue"
 import Stage from "@/utils/stage"
 import { ElMessageBox } from "element-plus"
 import type { Action } from "element-plus"
 const flag = ref(true)
+const highScore = ref(0)
 
-let games = reactive(new Stage(8, 8, 50))
-const { data, score } = toRefs(games)
+const games = ref<Stage>(new Stage(8, 8, 50))
+const data = computed(() => games.value.data)
+const score = computed(() => games.value.score)
+
+onMounted(() => {
+  const stored = localStorage.getItem("iceCreamHighScore")
+  if (stored) {
+    highScore.value = parseInt(stored)
+  }
+})
+
 const handleStart = () => {
   flag.value = false
-  games.gameLoop(true)
+  games.value.gameLoop(true)
 }
 const handleClick = (item: any) => {
-  games.click(item)
+  games.value.click(item)
+}
+const updateHighScore = () => {
+  if (score.value > highScore.value) {
+    highScore.value = score.value
+    localStorage.setItem("iceCreamHighScore", score.value.toString())
+  }
+}
+const handleRestart = () => {
+  ElMessageBox.confirm("确定要重新开始游戏吗？", "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      games.value = new Stage(8, 8, 50)
+      games.value.gameLoop(true)
+    })
+    .catch(() => {
+      // 用户取消
+    })
 }
 const handleOver = () => {
+  updateHighScore()
   ElMessageBox.alert(`当前成绩：${score.value}分`, "雪糕消消大作战", {
     confirmButtonText: "确定",
     callback: (action: Action) => {
@@ -111,7 +154,10 @@ const handleOver = () => {
       background-image: url("@/assets/images/6.png");
     }
     .active {
-      background-color: #f0f;
+      z-index: 100 !important;
+      transform: scale(1.1) !important;
+      box-shadow: 0 0 0 3px #ff69b4, 0 0 0 6px #ff1493;
+      border-radius: 8px;
     }
     .scale0 {
       transform: scale(0);
@@ -138,11 +184,33 @@ const handleOver = () => {
       transform: rotate(-10deg);
     }
   }
-  .score {
+  .score-container {
     margin-top: 30px;
+    display: flex;
+    justify-content: space-around;
+    padding: 0 20px;
+  }
+  .score,
+  .high-score {
     font-weight: bold;
-    font-size: 28px;
+    font-size: 24px;
     color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  .high-score-welcome {
+    margin-top: 20px;
+    font-weight: bold;
+    font-size: 20px;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  .game-buttons {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
   }
   .change-btn {
     position: absolute;
